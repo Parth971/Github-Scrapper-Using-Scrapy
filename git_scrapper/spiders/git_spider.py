@@ -3,8 +3,15 @@ import sqlite3
 
 import scrapy
 import pathlib
+import logging
 
 BASE_DIR = pathlib.Path(__file__).parent.parent.parent.resolve()
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    filename=BASE_DIR / 'logs/scraped.log',
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 
 class GitSpider(scrapy.Spider):
@@ -26,10 +33,21 @@ class GitSpider(scrapy.Spider):
 
     @staticmethod
     def get_last_scraped_url():
+        scraped_db_file_path = BASE_DIR / "outputs/scraped.db"
+        connection = sqlite3.connect(scraped_db_file_path)
+        cursor = connection.cursor()
 
-        # get_last_scraped_url
-        # increase page by 1
-        pass
+        res = cursor.execute(f'''SELECT * FROM scraped ORDER BY ID DESC LIMIT 1;''')
+        print(f'Last row is  {res}')
+        cursor.close()
+        connection.close()
+
+        res = list(res)[0]
+        repository_url = res[1]
+        request_url = res[2]
+        next_url = res[3]
+
+        return next_url
 
     @staticmethod
     def is_db_file_empty():
@@ -52,7 +70,14 @@ class GitSpider(scrapy.Spider):
         cursor = connection.cursor()
 
         cursor.execute(
-            f'''CREATE TABLE IF NOT EXISTS scraped(repository_url TEXT, request_url TEXT, next_url TEXT);'''
+            f'''
+            CREATE TABLE IF NOT EXISTS scraped(
+                ID INTEGER PRIMARY KEY AUTOINCREMENT,,
+                repository_url TEXT,
+                request_url TEXT,
+                next_url TEXT
+            );
+            '''
         )
         connection.commit()
         cursor.close()
@@ -64,7 +89,6 @@ class GitSpider(scrapy.Spider):
         file_name = GitSpider.OUTPUT_DB_FILE_NAME
 
         if not os.path.exists(outputs_dir / file_name):
-            # create db file
             GitSpider.create_database()
             url = GitSpider.get_input_url()
         else:
@@ -85,10 +109,6 @@ class GitSpider(scrapy.Spider):
         print(f'Count is {res}')
         cursor.close()
         connection.close()
-
-    @staticmethod
-    def insert_into_log(repository_url, request_url, next_url):
-        pass
 
     @staticmethod
     def get_parser_name_from_url(url):
@@ -127,7 +147,9 @@ class GitSpider(scrapy.Spider):
     def save_link(url, request_url, next_url):
         repository_url = url + '.git'
         GitSpider.insert_into_database(repository_url, request_url, next_url)
-        GitSpider.insert_into_log(repository_url, request_url, next_url)
+
+        message = f'Scrapped \'{repository_url}\' with request url: \'{request_url}\''
+        logging.info(message)
 
     def start_requests(self):
         callbacks_list = {
@@ -136,9 +158,10 @@ class GitSpider(scrapy.Spider):
             'repo': self.repo_parse
         }
         url = GitSpider.get_start_url()
-        key, url = GitSpider.get_parser_name_from_url(url)
-        callback = callbacks_list[key]
-        yield scrapy.Request(url=url, callback=callback)
+        if url:
+            key, url = GitSpider.get_parser_name_from_url(url)
+            callback = callbacks_list[key]
+            yield scrapy.Request(url=url, callback=callback)
 
     def main_parse(self, response):
         css_path = '#user-repositories-list ul li h3 a::attr(href)'
