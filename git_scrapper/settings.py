@@ -62,9 +62,6 @@ ROBOTSTXT_OBEY = False
 
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
-#ITEM_PIPELINES = {
-#    'git_scrapper.pipelines.GitScrapperPipeline': 300,
-#}
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html
@@ -87,14 +84,22 @@ ROBOTSTXT_OBEY = False
 #HTTPCACHE_IGNORE_HTTP_CODES = []
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
 
+SPIDER_MIDDLEWARES = {
+    'scrapy.spidermiddlewares.offsite.OffsiteMiddleware': None,
+}
+
 DOWNLOADER_MIDDLEWARES = {
     'scrapy_proxy_pool.middlewares.ProxyPoolMiddleware': 610,
     'scrapy_proxy_pool.middlewares.BanDetectionMiddleware': 620,
     'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
     'scrapy_user_agents.middlewares.RandomUserAgentMiddleware': 400,
     'scrapy.downloadermiddlewares.retry.RetryMiddleware': None,
-    'tutorial.middlewares.TooManyRequestsRetryMiddleware': 543,
+    'git_scrapper.middlewares.TooManyRequestsRetryMiddleware': 543,
 }
 
-PROXY_POOL_BAN_POLICY = 'tutorial.policy.BanDetectionPolicyNotText'
+PROXY_POOL_BAN_POLICY = 'git_scrapper.policy.BanDetectionPolicyNotText'
 RETRY_HTTP_CODES = [429]
+
+ITEM_PIPELINES = {
+   'git_scrapper.pipelines.GitScrapperPipeline': 300,
+}
