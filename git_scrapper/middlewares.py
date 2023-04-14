@@ -2,6 +2,9 @@
 #
 # See documentation in:
 # https://docs.scrapy.org/en/latest/topics/spider-middleware.html
+import os
+
+from dotenv import load_dotenv
 
 from scrapy import signals
 from scrapy.downloadermiddlewares.retry import RetryMiddleware
@@ -11,6 +14,7 @@ import time
 # useful for handling different item types with a single interface
 from itemadapter import is_item, ItemAdapter
 
+load_dotenv()
 
 class GitScrapperSpiderMiddleware:
     # Not all methods need to be defined. If a method is not defined,
@@ -121,7 +125,9 @@ class TooManyRequestsRetryMiddleware(RetryMiddleware):
             return response
         elif response.status == 429:
             self.crawler.engine.pause()
-            time.sleep(60) # If the rate limit is renewed in a minute, put 60 seconds, and so on.
+            WAITING_TIME = os.environ.get('WAITING_TIME')
+            print(f'------------------------WAITING_TIME ({WAITING_TIME})------------------------')
+            time.sleep(float(WAITING_TIME))
             self.crawler.engine.unpause()
             reason = response_status_message(response.status)
             return self._retry(request, reason, spider) or response
